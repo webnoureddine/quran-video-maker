@@ -5,7 +5,8 @@
   const S = {
     cfg: null, sb: null, surahs: [], styles: [], reciters: [], translations: [], fonts: [], ayahs: [],
     audioSrc: "reciter", audioUpload: null, styleId: null, opts: {}, trEdition: "en.sahih",
-    media: { library: [], uploads: [] }, tab: "library", selected: [], bgMode: "single", bgMotion: true,
+    media: { library: [], uploads: [], templates: [] }, tab: "library", defaultMedia: [],
+    maker: { kind: "gradient", c1: "#0F3D2E", c2: "#E8C068", seed: 1 }, selected: [], bgMode: "single", bgMotion: true,
     format: "landscape", frame: { enabled: false, radius: 40, padding: 40, bg_color: "#10231C", shadow: true },
     wm: { enabled: false, logo: null, position: "br", size_pct: 12, opacity: 0.85 },
     job: null, pollTimer: null, booted: false,
@@ -114,6 +115,11 @@
     if (!S.sb) return null;
     const { data } = await S.sb.auth.getSession();
     return data.session ? data.session.access_token : null;
+  }
+  async function authHeaders() {
+    const h = { "X-Lang": LANG, "Content-Type": "application/json" };
+    const tk = await token(); if (tk) h.Authorization = "Bearer " + tk;
+    return h;
   }
   async function api(path, opts = {}) {
     const headers = Object.assign({ "X-Lang": LANG }, opts.headers || {});
@@ -227,6 +233,8 @@
     S.opts = Object.assign({}, styleById(S.styleId).options, p.caption_options || {});
     if (FORMATS[p.format]) S.format = p.format;
     if (p.bg_mode) S.bgMode = p.bg_mode;
+    if (Array.isArray(p.default_media)) S.defaultMedia = p.default_media;
+    if (p.image_maker && typeof p.image_maker === "object") Object.assign(S.maker, p.image_maker);
     if (typeof p.bg_motion === "boolean") S.bgMotion = p.bg_motion;
     if (p.frame) Object.assign(S.frame, p.frame);
     if (p.watermark) Object.assign(S.wm, p.watermark);
@@ -236,6 +244,7 @@
     api("/api/preferences", { body: {
       caption_style: S.styleId, caption_options: S.opts, format: S.format, bg_mode: S.bgMode, bg_motion: S.bgMotion,
       frame: S.frame, watermark: S.wm, reciter: $("reciter").value, translation_edition: S.trEdition,
+      default_media: S.defaultMedia, image_maker: S.maker,
     } }).catch(() => {});
   }, 800);
 
@@ -482,16 +491,25 @@
     $("gallery").replaceChildren(el("div", { class: "empty", text: t("loading_media") }));
     try { S.media = await api("/api/media"); }
     catch (e) { $("gallery").replaceChildren(el("div", { class: "empty", text: e.message })); return; }
-    const known = new Set([...S.media.library, ...S.media.uploads].map((m) => m.id));
+    S.media.templates = S.media.templates || [];
+    const all = allMedia();
+    const known = new Set(all.map((m) => m.id));
     S.selected = S.selected.filter((id) => known.has(id));
+    S.defaultMedia = S.defaultMedia.filter((id) => known.has(id));
+    // templates marked ★ are used automatically in a new video
+    if (!S.mediaLoadedOnce && !S.selected.length && S.defaultMedia.length) S.selected = S.defaultMedia.slice(0, S.cfg.limits.max_bg_items);
+    S.mediaLoadedOnce = true;
     if (!S.media.library.length && S.media.uploads.length && S.tab === "library") S.tab = "uploads";
     renderGallery(); refreshAll();
   }
-  const mediaById = (id) => [...S.media.library, ...S.media.uploads].find((m) => m.id === id);
+  const allMedia = () => [...S.media.library, ...S.media.uploads, ...(S.media.templates || [])];
+  const mediaById = (id) => allMedia().find((m) => m.id === id);
   function renderGallery() {
     setPressed(".step", "tab", S.tab);
+    $("tplHint").hidden = S.tab !== "templates";
+    $("uploadBtnText").textContent = t(S.tab === "templates" ? "upload_template" : "upload_device");
     const items = S.media[S.tab] || [];
-    if (!items.length) { $("gallery").replaceChildren(el("div", { class: "empty", text: t(S.tab === "library" ? "lib_empty" : "up_empty") })); return; }
+    if (!items.length) { $("gallery").replaceChildren(el("div", { class: "empty", text: t({ library: "lib_empty", uploads: "up_empty", templates: "tpl_empty" }[S.tab]) })); return; }
     $("gallery").replaceChildren(...items.map((m) => {
       const idx = S.selected.indexOf(m.id);
       const thumb = m.kind === "video"
@@ -501,7 +519,10 @@
         thumb, el("span", { class: "kind", text: t(m.kind === "video" ? "video" : "image") }),
         idx >= 0 ? el("span", { class: "badge", text: String(idx + 1) }) : null,
         m.source === "uploads" ? el("span", { class: "del", role: "button", tabindex: "0", "aria-label": t("delete"), text: "×",
-          onclick: (e) => { e.stopPropagation(); deleteMedia(m); } }) : null);
+          onclick: (e) => { e.stopPropagation(); deleteMedia(m); } }) : null,
+        S.tab === "templates" ? el("span", { class: "star" + (S.defaultMedia.includes(m.id) ? " on" : ""), role: "button", tabindex: "0",
+          title: t("tpl_default"), "aria-label": t("tpl_default"), text: S.defaultMedia.includes(m.id) ? "★" : "☆",
+          onclick: (e) => { e.stopPropagation(); toggleDefault(m.id); } }) : null);
       if (m.kind === "video") {
         tile.addEventListener("mouseenter", () => thumb.play().catch(() => {}));
         tile.addEventListener("mouseleave", () => thumb.pause());
@@ -515,6 +536,12 @@
     else if (S.selected.length >= S.cfg.limits.max_bg_items) { toast(t("max_bg", { n: S.cfg.limits.max_bg_items })); return; }
     else S.selected.push(id);
     renderGallery(); refreshAll();
+  }
+  function toggleDefault(id) {
+    const i = S.defaultMedia.indexOf(id);
+    if (i >= 0) S.defaultMedia.splice(i, 1); else S.defaultMedia.push(id);
+    if (i < 0 && !S.selected.includes(id)) S.selected.push(id);
+    renderGallery(); refreshAll(); savePrefs();
   }
   async function deleteMedia(m) {
     if (!window.confirm(t("confirm_delete", { name: m.name }))) return;
@@ -530,21 +557,63 @@
     if (tooBig.length) toast(t("too_big", { names: tooBig.map((f) => f.name).join(", "), mb }));
     const ok = files.filter((f) => f.size <= mb * 1048576);
     if (!ok.length) return;
-    const fd = new FormData(); ok.forEach((f) => fd.append("files", f));
+    const folder = S.tab === "templates" ? "templates" : "backgrounds";
+    const fd = new FormData(); ok.forEach((f) => fd.append("files", f)); fd.append("folder", folder);
     $("uploadBtnText").textContent = t("uploading");
     try {
       const r = await api("/api/media/upload", { body: fd, allowPartial: true });
       if (r.errors && r.errors.length) toast(r.errors.join(" "));
       (r.items || []).forEach((it) => { if (!S.selected.includes(it.id) && S.selected.length < S.cfg.limits.max_bg_items) S.selected.push(it.id); });
-      S.tab = "uploads"; await loadMedia();
+      S.tab = folder === "templates" ? "templates" : "uploads"; await loadMedia();
     } catch (err) { toast(err.message); }
-    finally { $("uploadBtnText").textContent = t("upload_device"); }
+    finally { $("uploadBtnText").textContent = t(S.tab === "templates" ? "upload_template" : "upload_device"); }
+  });
+
+  // ── image maker: backgrounds made by the app (gradients, patterns, night sky…) ──
+  const PALETTES = [["#0F3D2E", "#E8C068"], ["#1B1F3B", "#7FA7FF"], ["#101010", "#D4AF37"], ["#2A1A3A", "#FF8FB1"],
+    ["#0B2A3A", "#5FE1D0"], ["#3A1F12", "#FFB35C"], ["#1E2A22", "#C8E6C9"], ["#F3EAD8", "#B08A4A"]];
+  function renderMaker() {
+    const m = S.maker;
+    setPressed("#makerKinds", "kind", m.kind);
+    $("makerPalettes").replaceChildren(...PALETTES.map(([a, b]) => el("button", { type: "button",
+      style: `background:linear-gradient(135deg,${a} 50%,${b} 50%)`, "aria-pressed": String(up(a) === up(m.c1) && up(b) === up(m.c2)),
+      "aria-label": `${a} ${b}`, onclick: () => { Object.assign(S.maker, { c1: a, c2: b }); renderMaker(); } })));
+    $("makerC1").value = up(m.c1); $("makerC2").value = up(m.c2);
+    $("makerImg").parentElement.className = "maker-preview " + S.format;
+    makerPreview();
+  }
+  const makerPreview = debounce(async () => {
+    try {
+      const r = await fetch("/api/images/preview", { method: "POST", headers: await authHeaders(),
+        body: JSON.stringify({ ...S.maker, format: S.format }) });
+      if (!r.ok) throw new Error();
+      const url = URL.createObjectURL(await r.blob());
+      const img = $("makerImg"); if (img.src.startsWith("blob:")) URL.revokeObjectURL(img.src); img.src = url;
+    } catch (_) { /* preview is optional */ }
+    savePrefs();
+  }, 250);
+  $("makerBtn").addEventListener("click", () => {
+    const open = $("maker").hidden; $("maker").hidden = !open; $("makerBtn").setAttribute("aria-expanded", String(open));
+    if (open) renderMaker();
+  });
+  document.querySelectorAll("#makerKinds [data-kind]").forEach((b) => b.addEventListener("click", () => { S.maker.kind = b.dataset.kind; renderMaker(); }));
+  $("makerC1").addEventListener("input", (e) => { S.maker.c1 = e.target.value; renderMaker(); });
+  $("makerC2").addEventListener("input", (e) => { S.maker.c2 = e.target.value; renderMaker(); });
+  $("makerShuffle").addEventListener("click", () => { S.maker.seed = Math.floor(Math.random() * 1e6); renderMaker(); });
+  $("makerAdd").addEventListener("click", async () => {
+    const b = $("makerAdd"); b.disabled = true; b.textContent = t("creating");
+    try {
+      const it = await api("/api/images/create", { body: { ...S.maker, format: S.format } });
+      if (!S.selected.includes(it.id) && S.selected.length < S.cfg.limits.max_bg_items) S.selected.push(it.id);
+      S.tab = "uploads"; await loadMedia(); toast(t("image_added"));
+    } catch (e) { toast(e.message); }
+    finally { b.disabled = false; b.textContent = t("maker_add"); }
   });
   document.querySelectorAll("[data-bg]").forEach((b) => b.addEventListener("click", () => { if (b.disabled) return; S.bgMode = b.dataset.bg; refreshAll(); savePrefs(); }));
   $("bgMotion").addEventListener("change", (e) => { S.bgMotion = e.target.checked; savePrefs(); });
 
   // ───────────────────────────── 4. Watermark & layout ─────────────────────────────
-  document.querySelectorAll("[data-fmt]").forEach((b) => b.addEventListener("click", () => { S.format = b.dataset.fmt; syncControls(); renderPreview(); savePrefs(); }));
+  document.querySelectorAll("[data-fmt]").forEach((b) => b.addEventListener("click", () => { S.format = b.dataset.fmt; syncControls(); renderPreview(); savePrefs(); if (!$("maker").hidden) renderMaker(); }));
   const bindFrame = (id, key, parse, evt = "input") => $(id).addEventListener(evt, (e) => {
     S.frame[key] = parse(e.target.type === "checkbox" ? e.target.checked : e.target.value); syncControls(); renderPreview(); savePrefs();
   });

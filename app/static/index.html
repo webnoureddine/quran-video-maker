@@ -181,9 +181,40 @@
         <div class="seg" role="tablist">
           <button type="button" data-tab="library" aria-pressed="true" data-i18n="tab_library">Media library</button>
           <button type="button" data-tab="uploads" aria-pressed="false" data-i18n="tab_uploads">My uploads</button>
+          <button type="button" data-tab="templates" aria-pressed="false" data-i18n="tab_templates">My templates</button>
         </div>
+        <button type="button" class="btn small" id="makerBtn" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l2.2 5.3L20 9l-4.4 3.9L17 19l-5-3-5 3 1.4-6.1L4 9l5.8-.7z"/></svg><span data-i18n="make_image">Create an image</span></button>
         <label class="btn small" for="bgFiles" id="uploadBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4m0 0l-5 5m5-5l5 5M4 20h16"/></svg><span id="uploadBtnText" data-i18n="upload_device">Upload from device</span></label>
         <input type="file" id="bgFiles" accept="image/png,image/jpeg,image/webp,video/mp4,video/quicktime,video/webm,.mov,.m4v,.mkv" multiple hidden>
+      </div>
+      <p class="hint" id="tplHint" hidden data-i18n="tpl_hint">Your own designs (videos or images) to reuse. Tap ★ to use a template automatically in every new video.</p>
+      <div class="maker" id="maker" hidden>
+        <div class="maker-grid">
+          <div class="maker-controls">
+            <span class="label" data-i18n="maker_kind">Type</span>
+            <div class="chips" id="makerKinds">
+              <button type="button" data-kind="gradient" data-i18n="mk_gradient">Gradient</button>
+              <button type="button" data-kind="radial" data-i18n="mk_radial">Soft light</button>
+              <button type="button" data-kind="aurora" data-i18n="mk_aurora">Aurora</button>
+              <button type="button" data-kind="pattern" data-i18n="mk_pattern">Islamic pattern</button>
+              <button type="button" data-kind="stars" data-i18n="mk_stars">Night sky</button>
+              <button type="button" data-kind="bokeh" data-i18n="mk_bokeh">Bokeh</button>
+              <button type="button" data-kind="arch" data-i18n="mk_arch">Mihrab arch</button>
+              <button type="button" data-kind="solid" data-i18n="mk_solid">Solid colour</button>
+            </div>
+            <span class="label" style="margin-top:12px" data-i18n="maker_palette">Colours</span>
+            <div class="palettes" id="makerPalettes"></div>
+            <div class="row" style="margin-top:8px">
+              <div class="field"><label for="makerC1" data-i18n="maker_c1">Main colour</label><input class="input" type="color" id="makerC1"></div>
+              <div class="field"><label for="makerC2" data-i18n="maker_c2">Light colour</label><input class="input" type="color" id="makerC2"></div>
+            </div>
+            <div class="maker-actions">
+              <button type="button" class="btn small" id="makerShuffle" data-i18n="maker_shuffle">Shuffle</button>
+              <button type="button" class="btn small primary" id="makerAdd" data-i18n="maker_add">Add to my uploads</button>
+            </div>
+          </div>
+          <div class="maker-preview"><img id="makerImg" alt=""></div>
+        </div>
       </div>
       <div class="gallery" id="gallery" aria-live="polite"></div>
       <div class="row" style="margin-top:14px; align-items:end">

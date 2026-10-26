@@ -7,6 +7,7 @@ never blocks the web server and can be cancelled.
 
 Run locally:   python -m app.server        (or: gunicorn -w 1 --threads 8 app.server:app)
 """
+import io
 import json
 import os
 import re
@@ -253,13 +254,53 @@ def media_upload():
     saved, errors = [], []
     for f in files[:C.MAX_BG_ITEMS]:
         try:
-            saved.append(media.save_background(g.user, f, TMP_DIR))
+            saved.append(media.save_background(g.user, f, TMP_DIR, request.form.get("folder") or "backgrounds"))
         except media.MediaError as e:
             errors.append(tr(e.key, lang(), **e.params))
-        except db.SupabaseError as e:
-            log(f"upload: {e}")
+        except Exception as e:                  # storage / disk problem: report it, never a bare 500
+            log(f"upload {f.filename}: {e!r}")
             errors.append(tr("media_save_failed", lang(), name=f.filename))
     return jsonify({"items": saved, "errors": errors}), (200 if saved else 400)
+
+
+# ───────────────────────────── made images ─────────────────────────────
+def _image_args(data):
+    from app import imagegen
+    kind = data.get("kind") if data.get("kind") in imagegen.KINDS else "gradient"
+    fmt = data.get("format") if data.get("format") in FORMATS else "portrait"
+    W, H = FORMATS[fmt]
+    try:
+        seed = int(data.get("seed") or 0) % 1_000_000
+    except (TypeError, ValueError):
+        seed = 0
+    return kind, _color(data.get("c1"), "#0F3D2E"), _color(data.get("c2"), "#E8C068"), W, H, seed
+
+
+@app.route("/api/images/preview", methods=["POST"])
+@require_user
+def image_preview():
+    """A small preview (quarter size) of a made image."""
+    from app import imagegen
+    kind, c1, c2, W, H, seed = _image_args(request.get_json(silent=True) or {})
+    img = imagegen.generate(kind, c1, c2, W // 4, H // 4, seed)
+    buf = io.BytesIO()
+    img.save(buf, "JPEG", quality=85)
+    buf.seek(0)
+    return send_file(buf, mimetype="image/jpeg", max_age=0)
+
+
+@app.route("/api/images/create", methods=["POST"])
+@require_user
+def image_create():
+    """Make the image at full video size and add it to the user's uploads."""
+    from app import imagegen
+    kind, c1, c2, W, H, seed = _image_args(request.get_json(silent=True) or {})
+    try:
+        img = imagegen.generate(kind, c1, c2, W, H, seed)
+        return jsonify(media.save_generated(g.user, img, TMP_DIR, kind))
+    except Exception as e:
+        log(f"made image: {e!r}")
+        return err("media_save_failed", 500, name=kind)
 
 
 @app.route("/api/media", methods=["DELETE"])
@@ -369,7 +410,7 @@ def audio_detect_status(audio_id):
 
 # ───────────────────────────── preferences ─────────────────────────────
 PREF_KEYS = {"caption_style", "caption_options", "format", "bg_mode", "bg_motion", "frame", "watermark",
-             "reciter", "translation_edition", "ui_lang", "theme"}
+             "reciter", "translation_edition", "ui_lang", "theme", "default_media", "image_maker"}
 
 
 def _load_prefs(user) -> dict:

@@ -11,6 +11,7 @@ Item ids are "library/<path>" or "uploads/<user_id>/<path>", and every
 operation checks that an uploads id belongs to the calling user.
 """
 import json
+import shutil
 import re
 import subprocess
 import uuid
@@ -19,7 +20,7 @@ from pathlib import Path
 from app import config as C
 from app import db
 from app.i18n import AppError
-import shutil
+
 IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".webp")
 VIDEO_EXTS = (".mp4", ".mov", ".webm", ".m4v", ".mkv")
 AUDIO_EXTS = (".mp3", ".wav", ".m4a", ".aac", ".ogg", ".flac", ".opus")
@@ -141,14 +142,32 @@ def list_media(user) -> dict:
     if db.is_remote():
         lib = _remote_items(C.BUCKET_LIBRARY, "", "library", "library")
         up = _remote_items(C.BUCKET_UPLOADS, f"{uid}/backgrounds/", "uploads", "uploads")
+        tpl = _remote_items(C.BUCKET_UPLOADS, f"{uid}/templates/", "uploads", "uploads")
     else:
         lib = _local_items(C.LIBRARY_DIR, "library", "library")
         up = _local_items(C.USER_UPLOADS_DIR, "uploads", "uploads", f"{uid}/backgrounds")
-    return {"library": lib, "uploads": up}
+        tpl = _local_items(C.USER_UPLOADS_DIR, "uploads", "uploads", f"{uid}/templates")
+    return {"library": lib, "uploads": up, "templates": tpl}
+
+
+def save_generated(user, img, tmp_dir: Path, kind_name: str) -> dict:
+    """Store an image made by app/imagegen.py in the user's uploads."""
+    name = safe_name(f"made-{kind_name}.jpg")
+    tmp = Path(tmp_dir) / name
+    Path(tmp_dir).mkdir(parents=True, exist_ok=True)
+    img.save(tmp, "JPEG", quality=92, subsampling=0)
+    try:
+        return _store(user, tmp, f"backgrounds/{name}", "image", tmp.stat().st_size)
+    finally:
+        tmp.unlink(missing_ok=True)
 
 
 # ───────────────────────────── uploads ─────────────────────────────
-def save_background(user, file_storage, tmp_dir: Path) -> dict:
+FOLDERS = ("backgrounds", "templates")       # templates: the user's own reusable designs
+
+
+def save_background(user, file_storage, tmp_dir: Path, folder: str = "backgrounds") -> dict:
+    folder = folder if folder in FOLDERS else "backgrounds"
     kind = kind_of(file_storage.filename or "")
     if not kind:
         raise MediaError("media_type", name=file_storage.filename)
@@ -158,7 +177,7 @@ def save_background(user, file_storage, tmp_dir: Path) -> dict:
     file_storage.save(tmp)
     try:
         validate_visual(tmp, kind)
-        return _store(user, tmp, f"backgrounds/{name}", kind, size)
+        return _store(user, tmp, f"{folder}/{name}", kind, size)
     finally:
         tmp.unlink(missing_ok=True)
 
