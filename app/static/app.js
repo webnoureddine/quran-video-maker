@@ -5,8 +5,7 @@
   const S = {
     cfg: null, sb: null, surahs: [], styles: [], reciters: [], translations: [], fonts: [], ayahs: [],
     audioSrc: "reciter", audioUpload: null, styleId: null, opts: {}, trEdition: "en.sahih",
-    media: { library: [], uploads: [], templates: [] }, tab: "library", defaultMedia: [],
-    maker: { kind: "gradient", c1: "#0F3D2E", c2: "#E8C068", seed: 1 }, selected: [], bgMode: "single", bgMotion: true,
+    media: { designs: [], library: [], uploads: [], templates: [] }, tab: "designs", defaultMedia: [], selected: [], bgMode: "single", bgMotion: true,
     format: "landscape", frame: { enabled: false, radius: 40, padding: 40, bg_color: "#10231C", shadow: true },
     wm: { enabled: false, logo: null, position: "br", size_pct: 12, opacity: 0.85 },
     job: null, pollTimer: null, booted: false,
@@ -234,7 +233,6 @@
     if (FORMATS[p.format]) S.format = p.format;
     if (p.bg_mode) S.bgMode = p.bg_mode;
     if (Array.isArray(p.default_media)) S.defaultMedia = p.default_media;
-    if (p.image_maker && typeof p.image_maker === "object") Object.assign(S.maker, p.image_maker);
     if (typeof p.bg_motion === "boolean") S.bgMotion = p.bg_motion;
     if (p.frame) Object.assign(S.frame, p.frame);
     if (p.watermark) Object.assign(S.wm, p.watermark);
@@ -244,7 +242,7 @@
     api("/api/preferences", { body: {
       caption_style: S.styleId, caption_options: S.opts, format: S.format, bg_mode: S.bgMode, bg_motion: S.bgMotion,
       frame: S.frame, watermark: S.wm, reciter: $("reciter").value, translation_edition: S.trEdition,
-      default_media: S.defaultMedia, image_maker: S.maker,
+      default_media: S.defaultMedia,
     } }).catch(() => {});
   }, 800);
 
@@ -499,24 +497,30 @@
     // templates marked ★ are used automatically in a new video
     if (!S.mediaLoadedOnce && !S.selected.length && S.defaultMedia.length) S.selected = S.defaultMedia.slice(0, S.cfg.limits.max_bg_items);
     S.mediaLoadedOnce = true;
-    if (!S.media.library.length && S.media.uploads.length && S.tab === "library") S.tab = "uploads";
+    S.media.designs = S.media.designs || [];
     renderGallery(); refreshAll();
   }
-  const allMedia = () => [...S.media.library, ...S.media.uploads, ...(S.media.templates || [])];
+  const allMedia = () => [...(S.media.designs || []), ...S.media.library, ...S.media.uploads, ...(S.media.templates || [])];
+  // ready-made designs are drawn in the video's shape
+  const mediaUrl = (m) => m.source === "design" ? `${m.url}?format=${S.format}` : m.url;
+  const mediaName = (m) => (LANG === "ar" && m.name_ar ? m.name_ar : m.name);
   const mediaById = (id) => allMedia().find((m) => m.id === id);
   function renderGallery() {
     setPressed(".step", "tab", S.tab);
     $("tplHint").hidden = S.tab !== "templates";
     $("uploadBtnText").textContent = t(S.tab === "templates" ? "upload_template" : "upload_device");
     const items = S.media[S.tab] || [];
-    if (!items.length) { $("gallery").replaceChildren(el("div", { class: "empty", text: t({ library: "lib_empty", uploads: "up_empty", templates: "tpl_empty" }[S.tab]) })); return; }
+    const [FW, FH] = FORMATS[S.format];
+    $("gallery").classList.toggle("designs", S.tab === "designs");
+    $("gallery").style.setProperty("--tile-ar", String(FW / FH));
+    if (!items.length) { $("gallery").replaceChildren(el("div", { class: "empty", text: t({ designs: "lib_empty", library: "lib_empty", uploads: "up_empty", templates: "tpl_empty" }[S.tab]) })); return; }
     $("gallery").replaceChildren(...items.map((m) => {
       const idx = S.selected.indexOf(m.id);
       const thumb = m.kind === "video"
         ? el("video", { src: m.url + "#t=0.5", muted: true, preload: "metadata", playsinline: true, loop: true })
-        : el("img", { src: m.url, alt: m.name, loading: "lazy" });
-      const tile = el("button", { type: "button", class: "tile", "aria-pressed": String(idx >= 0), title: m.name, onclick: () => toggleMedia(m.id) },
-        thumb, el("span", { class: "kind", text: t(m.kind === "video" ? "video" : "image") }),
+        : el("img", { src: mediaUrl(m), alt: mediaName(m), loading: "lazy" });
+      const tile = el("button", { type: "button", class: "tile", "aria-pressed": String(idx >= 0), title: mediaName(m), onclick: () => toggleMedia(m.id) },
+        thumb, m.source === "design" ? el("span", { class: "name", text: mediaName(m) }) : el("span", { class: "kind", text: t(m.kind === "video" ? "video" : "image") }),
         idx >= 0 ? el("span", { class: "badge", text: String(idx + 1) }) : null,
         m.source === "uploads" ? el("span", { class: "del", role: "button", tabindex: "0", "aria-label": t("delete"), text: "×",
           onclick: (e) => { e.stopPropagation(); deleteMedia(m); } }) : null,
@@ -569,51 +573,11 @@
     finally { $("uploadBtnText").textContent = t(S.tab === "templates" ? "upload_template" : "upload_device"); }
   });
 
-  // ── image maker: backgrounds made by the app (gradients, patterns, night sky…) ──
-  const PALETTES = [["#0F3D2E", "#E8C068"], ["#1B1F3B", "#7FA7FF"], ["#101010", "#D4AF37"], ["#2A1A3A", "#FF8FB1"],
-    ["#0B2A3A", "#5FE1D0"], ["#3A1F12", "#FFB35C"], ["#1E2A22", "#C8E6C9"], ["#F3EAD8", "#B08A4A"]];
-  function renderMaker() {
-    const m = S.maker;
-    setPressed("#makerKinds", "kind", m.kind);
-    $("makerPalettes").replaceChildren(...PALETTES.map(([a, b]) => el("button", { type: "button",
-      style: `background:linear-gradient(135deg,${a} 50%,${b} 50%)`, "aria-pressed": String(up(a) === up(m.c1) && up(b) === up(m.c2)),
-      "aria-label": `${a} ${b}`, onclick: () => { Object.assign(S.maker, { c1: a, c2: b }); renderMaker(); } })));
-    $("makerC1").value = up(m.c1); $("makerC2").value = up(m.c2);
-    $("makerImg").parentElement.className = "maker-preview " + S.format;
-    makerPreview();
-  }
-  const makerPreview = debounce(async () => {
-    try {
-      const r = await fetch("/api/images/preview", { method: "POST", headers: await authHeaders(),
-        body: JSON.stringify({ ...S.maker, format: S.format }) });
-      if (!r.ok) throw new Error();
-      const url = URL.createObjectURL(await r.blob());
-      const img = $("makerImg"); if (img.src.startsWith("blob:")) URL.revokeObjectURL(img.src); img.src = url;
-    } catch (_) { /* preview is optional */ }
-    savePrefs();
-  }, 250);
-  $("makerBtn").addEventListener("click", () => {
-    const open = $("maker").hidden; $("maker").hidden = !open; $("makerBtn").setAttribute("aria-expanded", String(open));
-    if (open) renderMaker();
-  });
-  document.querySelectorAll("#makerKinds [data-kind]").forEach((b) => b.addEventListener("click", () => { S.maker.kind = b.dataset.kind; renderMaker(); }));
-  $("makerC1").addEventListener("input", (e) => { S.maker.c1 = e.target.value; renderMaker(); });
-  $("makerC2").addEventListener("input", (e) => { S.maker.c2 = e.target.value; renderMaker(); });
-  $("makerShuffle").addEventListener("click", () => { S.maker.seed = Math.floor(Math.random() * 1e6); renderMaker(); });
-  $("makerAdd").addEventListener("click", async () => {
-    const b = $("makerAdd"); b.disabled = true; b.textContent = t("creating");
-    try {
-      const it = await api("/api/images/create", { body: { ...S.maker, format: S.format } });
-      if (!S.selected.includes(it.id) && S.selected.length < S.cfg.limits.max_bg_items) S.selected.push(it.id);
-      S.tab = "uploads"; await loadMedia(); toast(t("image_added"));
-    } catch (e) { toast(e.message); }
-    finally { b.disabled = false; b.textContent = t("maker_add"); }
-  });
   document.querySelectorAll("[data-bg]").forEach((b) => b.addEventListener("click", () => { if (b.disabled) return; S.bgMode = b.dataset.bg; refreshAll(); savePrefs(); }));
   $("bgMotion").addEventListener("change", (e) => { S.bgMotion = e.target.checked; savePrefs(); });
 
   // ───────────────────────────── 4. Watermark & layout ─────────────────────────────
-  document.querySelectorAll("[data-fmt]").forEach((b) => b.addEventListener("click", () => { S.format = b.dataset.fmt; syncControls(); renderPreview(); savePrefs(); if (!$("maker").hidden) renderMaker(); }));
+  document.querySelectorAll("[data-fmt]").forEach((b) => b.addEventListener("click", () => { S.format = b.dataset.fmt; syncControls(); renderPreview(); savePrefs(); if (S.tab === "designs") renderGallery(); }));
   const bindFrame = (id, key, parse, evt = "input") => $(id).addEventListener(evt, (e) => {
     S.frame[key] = parse(e.target.type === "checkbox" ? e.target.checked : e.target.value); syncControls(); renderPreview(); savePrefs();
   });
@@ -641,11 +605,11 @@
     const stage = $("stage"); stage.className = "stage " + S.format; $("fmtLabel").textContent = label;
     const sw = stage.clientWidth || 360, scale = sw / W;
     const first = mediaById(S.selected[0]);
-    const key = first ? first.id : "";
+    const key = first ? first.id + S.format : "";
     if (key !== shownShot) {
       shownShot = key;
       $("pvShot").replaceChildren(first
-        ? (first.kind === "video" ? el("video", { src: first.url, muted: true, autoplay: true, loop: true, playsinline: true }) : el("img", { src: first.url, alt: "" }))
+        ? (first.kind === "video" ? el("video", { src: first.url, muted: true, autoplay: true, loop: true, playsinline: true }) : el("img", { src: mediaUrl(first), alt: "" }))
         : el("div", { class: "placeholder" }));
       const v = $("pvShot").querySelector("video"); if (v) { v.muted = true; v.play().catch(() => {}); }
     }

@@ -1,7 +1,7 @@
 """
 imagegen.py — background images made by the app (no AI, no web): solid colours,
-gradients, soft light, Islamic geometric pattern, night sky, bokeh and a
-mihrab arch. Pure Pillow + numpy, rendered at the video's own resolution.
+gradients, soft light, Islamic geometric pattern, night sky, bokeh, a
+mihrab arch and an ornate frame. DESIGNS is the ready-made set users pick from. Pure Pillow + numpy, rendered at the video's own resolution.
 """
 import math
 import random
@@ -9,7 +9,7 @@ import random
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
-KINDS = ("solid", "gradient", "radial", "aurora", "pattern", "stars", "bokeh", "arch")
+KINDS = ("solid", "gradient", "radial", "aurora", "pattern", "stars", "bokeh", "arch", "arch_stars", "frame")
 
 
 def _rgb(hex_color: str) -> np.ndarray:
@@ -174,4 +174,83 @@ def generate(kind: str, c1: str, c2: str, W: int, H: int, seed: int = 0) -> Imag
         edge = np.asarray(_arch_mask(W, H).filter(ImageFilter.GaussianBlur(min(W, H) * 0.03)), np.float32)[..., None] / 255
         img = base * (1 - mask) + inner * mask + b * np.clip(edge - mask, 0, 1) * 0.9
         return _grain(_vignette(_to_img(img), 0.45), rng)
+    if kind == "arch_stars":
+        sky = np.asarray(generate("stars", c1, c2, W, H, seed), np.float32)
+        mask = np.asarray(_arch_mask(W, H), np.float32)[..., None] / 255
+        edge = np.asarray(_arch_mask(W, H).filter(ImageFilter.GaussianBlur(min(W, H) * 0.025)), np.float32)[..., None] / 255
+        wall = _gradient(W, H, dark * 0.6, a * 0.45, 90)
+        img = sky * mask + wall * (1 - mask) + b * np.clip(edge - mask, 0, 1) * 1.1
+        return _grain(_vignette(_to_img(img), 0.4), rng)
+    if kind == "frame":
+        base = _radial(W, H, dark, a, 0.5, 0.5, 1.0)
+        m, _ = _star_pattern(W, H, b, 0.10, min(W, H) / 6)
+        img = _to_img(base * (1 - m) + b * m)
+        S = 2
+        lay = Image.new("L", (W * S, H * S), 0)
+        d = ImageDraw.Draw(lay)
+        u = min(W, H) * S
+        for inset, lw in ((0.045, 0.006), (0.062, 0.0025)):
+            i = int(u * inset)
+            d.rectangle([i, i, W * S - i, H * S - i], outline=255, width=max(2, int(u * lw)))
+        r = u * 0.022
+        for cx, cy in ((u * 0.045, u * 0.045), (W * S - u * 0.045, u * 0.045),
+                       (u * 0.045, H * S - u * 0.045), (W * S - u * 0.045, H * S - u * 0.045)):
+            d.polygon([(cx, cy - r), (cx + r, cy), (cx, cy + r), (cx - r, cy)], fill=255)
+        lay = lay.resize((W, H), Image.LANCZOS)
+        fm = np.asarray(lay, np.float32)[..., None] / 255 * 0.9
+        img = _to_img(np.asarray(img, np.float32) * (1 - fm) + b * fm)
+        return _grain(_vignette(img, 0.35), rng)
     raise ValueError(kind)
+
+
+# ── ready-made designs: users just pick one ──
+PALETTES = {
+    "emerald": ("#0F3D2E", "#E8C068", "Emerald & gold", "زمردي وذهبي"),
+    "night": ("#141A38", "#7FA7FF", "Night blue", "أزرق ليلي"),
+    "onyx": ("#121212", "#D4AF37", "Black & gold", "أسود وذهبي"),
+    "dusk": ("#2A1A3A", "#FF8FB1", "Dusk", "غروب"),
+    "lagoon": ("#0B2A3A", "#5FE1D0", "Lagoon", "بحيرة"),
+    "amber": ("#3A1F12", "#FFB35C", "Amber", "كهرماني"),
+    "sage": ("#1E2A22", "#C8E6C9", "Sage", "مريمية"),
+    "ruby": ("#3A0F16", "#F2B880", "Ruby", "ياقوتي"),
+}
+KIND_NAMES = {
+    "gradient": ("Gradient", "تدرّج"), "radial": ("Soft light", "ضوء ناعم"), "aurora": ("Aurora", "شفق"),
+    "pattern": ("Islamic pattern", "زخرفة إسلامية"), "stars": ("Night sky", "سماء ليلية"), "bokeh": ("Bokeh", "بوكيه"),
+    "arch": ("Mihrab", "محراب"), "arch_stars": ("Mihrab & stars", "محراب ونجوم"), "frame": ("Ornate frame", "إطار مزخرف"),
+}
+_DESIGN_LIST = [
+    ("emerald", "pattern"), ("emerald", "arch"), ("emerald", "frame"), ("emerald", "radial"),
+    ("night", "arch_stars"), ("night", "stars"), ("night", "aurora"), ("night", "pattern"),
+    ("onyx", "frame"), ("onyx", "pattern"), ("onyx", "radial"), ("onyx", "bokeh"),
+    ("dusk", "aurora"), ("dusk", "bokeh"), ("dusk", "arch_stars"),
+    ("lagoon", "aurora"), ("lagoon", "stars"), ("lagoon", "pattern"),
+    ("amber", "radial"), ("amber", "arch"), ("amber", "bokeh"),
+    ("sage", "pattern"), ("sage", "frame"),
+    ("ruby", "arch"), ("ruby", "pattern"), ("ruby", "frame"),
+]
+DESIGNS = {f"{p}-{k}": {"palette": p, "kind": k} for p, k in _DESIGN_LIST}
+
+
+def design_info(design_id: str) -> dict:
+    d = DESIGNS[design_id]
+    pal, kn = PALETTES[d["palette"]], KIND_NAMES[d["kind"]]
+    return {"id": design_id, "name": f"{kn[0]} · {pal[2]}", "name_ar": f"{kn[1]} · {pal[3]}"}
+
+
+def design_image(design_id: str, W: int, H: int) -> Image.Image:
+    d = DESIGNS[design_id]
+    c1, c2 = PALETTES[d["palette"]][:2]
+    return generate(d["kind"], c1, c2, W, H, seed=sum(map(ord, design_id)))
+
+
+def design_file(design_id: str, W: int, H: int, cache_dir) -> "Path":
+    """The design as a JPEG of exactly W x H (made once, then cached)."""
+    from pathlib import Path
+    out = Path(cache_dir) / "designs" / f"{design_id}-{W}x{H}.jpg"
+    if not out.exists():
+        out.parent.mkdir(parents=True, exist_ok=True)
+        tmp = out.with_suffix(".part.jpg")
+        design_image(design_id, W, H).save(tmp, "JPEG", quality=92 if W >= 720 else 82, subsampling=0)
+        tmp.replace(out)
+    return out

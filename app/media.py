@@ -147,19 +147,14 @@ def list_media(user) -> dict:
         lib = _local_items(C.LIBRARY_DIR, "library", "library")
         up = _local_items(C.USER_UPLOADS_DIR, "uploads", "uploads", f"{uid}/backgrounds")
         tpl = _local_items(C.USER_UPLOADS_DIR, "uploads", "uploads", f"{uid}/templates")
-    return {"library": lib, "uploads": up, "templates": tpl}
+    return {"designs": list_designs(), "library": lib, "uploads": up, "templates": tpl}
 
 
-def save_generated(user, img, tmp_dir: Path, kind_name: str) -> dict:
-    """Store an image made by app/imagegen.py in the user's uploads."""
-    name = safe_name(f"made-{kind_name}.jpg")
-    tmp = Path(tmp_dir) / name
-    Path(tmp_dir).mkdir(parents=True, exist_ok=True)
-    img.save(tmp, "JPEG", quality=92, subsampling=0)
-    try:
-        return _store(user, tmp, f"backgrounds/{name}", "image", tmp.stat().st_size)
-    finally:
-        tmp.unlink(missing_ok=True)
+def list_designs() -> list:
+    """The ready-made background images (app/imagegen.py), as gallery items."""
+    from app.imagegen import DESIGNS, design_info
+    return [{**design_info(d), "kind": "image", "source": "design", "id": f"design/{d}",
+             "url": f"/api/designs/{d}.jpg"} for d in DESIGNS]
 
 
 # ───────────────────────────── uploads ─────────────────────────────
@@ -312,6 +307,10 @@ def _split(user, media_id: str):
     src, _, path = media_id.partition("/")
     if src == "library" and path:
         return src, path
+    if src == "design":
+        from app.imagegen import DESIGNS
+        if path in DESIGNS:
+            return src, path
     if src == "uploads" and path.startswith(_uid(user) + "/"):
         return src, path
     raise MediaError("media_unavailable")
@@ -327,9 +326,13 @@ def local_path(user, media_id: str):
     return p
 
 
-def fetch_for_render(user, media_id: str, dest_dir: Path) -> Path:
-    """A local copy of the item for the render engine."""
+def fetch_for_render(user, media_id: str, dest_dir: Path, size=(1920, 1080)) -> Path:
+    """A local copy of the item for the render engine (ready-made designs are
+    drawn at the video's exact size)."""
     src, path = _split(user, media_id)
+    if src == "design":
+        from app.imagegen import design_file
+        return design_file(path, size[0], size[1], C.CACHE_DIR)
     if not db.is_remote():
         return local_path(user, media_id)
     bucket = C.BUCKET_LIBRARY if src == "library" else C.BUCKET_UPLOADS

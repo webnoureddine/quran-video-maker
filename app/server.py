@@ -7,7 +7,6 @@ never blocks the web server and can be cancelled.
 
 Run locally:   python -m app.server        (or: gunicorn -w 1 --threads 8 app.server:app)
 """
-import io
 import json
 import os
 import re
@@ -263,44 +262,16 @@ def media_upload():
     return jsonify({"items": saved, "errors": errors}), (200 if saved else 400)
 
 
-# ───────────────────────────── made images ─────────────────────────────
-def _image_args(data):
+# ───────────────────────────── ready-made designs ─────────────────────────────
+@app.route("/api/designs/<design_id>.jpg")
+def design_thumb(design_id):
+    """Preview of a ready-made background (public, cached). ?format= picks the shape."""
     from app import imagegen
-    kind = data.get("kind") if data.get("kind") in imagegen.KINDS else "gradient"
-    fmt = data.get("format") if data.get("format") in FORMATS else "portrait"
-    W, H = FORMATS[fmt]
-    try:
-        seed = int(data.get("seed") or 0) % 1_000_000
-    except (TypeError, ValueError):
-        seed = 0
-    return kind, _color(data.get("c1"), "#0F3D2E"), _color(data.get("c2"), "#E8C068"), W, H, seed
-
-
-@app.route("/api/images/preview", methods=["POST"])
-@require_user
-def image_preview():
-    """A small preview (quarter size) of a made image."""
-    from app import imagegen
-    kind, c1, c2, W, H, seed = _image_args(request.get_json(silent=True) or {})
-    img = imagegen.generate(kind, c1, c2, W // 4, H // 4, seed)
-    buf = io.BytesIO()
-    img.save(buf, "JPEG", quality=85)
-    buf.seek(0)
-    return send_file(buf, mimetype="image/jpeg", max_age=0)
-
-
-@app.route("/api/images/create", methods=["POST"])
-@require_user
-def image_create():
-    """Make the image at full video size and add it to the user's uploads."""
-    from app import imagegen
-    kind, c1, c2, W, H, seed = _image_args(request.get_json(silent=True) or {})
-    try:
-        img = imagegen.generate(kind, c1, c2, W, H, seed)
-        return jsonify(media.save_generated(g.user, img, TMP_DIR, kind))
-    except Exception as e:
-        log(f"made image: {e!r}")
-        return err("media_save_failed", 500, name=kind)
+    if design_id not in imagegen.DESIGNS:
+        abort(404)
+    W, H = FORMATS.get(request.args.get("format"), FORMATS["portrait"])
+    f = imagegen.design_file(design_id, W // 4, H // 4, C.CACHE_DIR)
+    return send_file(f, mimetype="image/jpeg", max_age=86400)
 
 
 @app.route("/api/media", methods=["DELETE"])
@@ -410,7 +381,7 @@ def audio_detect_status(audio_id):
 
 # ───────────────────────────── preferences ─────────────────────────────
 PREF_KEYS = {"caption_style", "caption_options", "format", "bg_mode", "bg_motion", "frame", "watermark",
-             "reciter", "translation_edition", "ui_lang", "theme", "default_media", "image_maker"}
+             "reciter", "translation_edition", "ui_lang", "theme", "default_media"}
 
 
 def _load_prefs(user) -> dict:
@@ -735,12 +706,13 @@ def _run_job(job):
             bg_dir = job_dir / "media"
             bg_dir.mkdir(exist_ok=True)
             backgrounds = []
+            size = FORMATS[spec["format"]]
             for mid in spec["backgrounds"]:
-                p = media.fetch_for_render(user, mid, bg_dir)
+                p = media.fetch_for_render(user, mid, bg_dir, size)
                 backgrounds.append({"path": str(p), "name": Path(mid).name.split("-", 1)[-1]})
             frame = dict(spec["frame"])
             if frame.pop("bg_image_id", None) and spec["frame"]["bg_image_id"]:
-                frame["bg_image"] = str(media.fetch_for_render(user, spec["frame"]["bg_image_id"], bg_dir))
+                frame["bg_image"] = str(media.fetch_for_render(user, spec["frame"]["bg_image_id"], bg_dir, size))
             wm = dict(spec["watermark"])
             logo_id = wm.pop("logo_id", None)
             if logo_id:
