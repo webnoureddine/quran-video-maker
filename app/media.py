@@ -19,7 +19,7 @@ from pathlib import Path
 from app import config as C
 from app import db
 from app.i18n import AppError
-
+import shutil
 IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".webp")
 VIDEO_EXTS = (".mp4", ".mov", ".webm", ".m4v", ".mkv")
 AUDIO_EXTS = (".mp3", ".wav", ".m4a", ".aac", ".ogg", ".flac", ".opus")
@@ -278,7 +278,7 @@ def _store(user, tmp: Path, rel: str, kind: str, size: int) -> dict:
     else:
         dest = C.USER_UPLOADS_DIR / path
         dest.parent.mkdir(parents=True, exist_ok=True)
-        tmp.replace(dest)
+        shutil.move(str(tmp), str(dest))      # works across disks (/tmp -> /data)
         url = f"/api/media/file?id=uploads/{path}"
     return {"id": f"uploads/{path}", "name": tmp.name.split("-", 1)[-1], "kind": kind,
             "source": "uploads", "size": size, "url": url}
