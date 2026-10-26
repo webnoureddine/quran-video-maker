@@ -1,0 +1,20 @@
+{
+  "label": "Golden light",
+  "label_ar": "نور ذهبي",
+  "description": "Warm glow on the word being recited.",
+  "description_ar": "توهج دافئ على الكلمة المتلوّة.",
+  "sort": 4,
+  "ar_font": "Amiri Quran",
+  "ar_color": "#FFF4D6",
+  "hl_color": "#FFD54A",
+  "glow": true,
+  "glow_color": "#FF9F1C",
+  "glow_size": 1.2,
+  "anim": "glow_word",
+  "ar_size": 0.11,
+  "center_y": 0.5,
+  "outline": 1,
+  "outline_color": "#3A2400",
+  "shadow": 0,
+  "max_words_per_line": 5
+}

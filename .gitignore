@@ -1,0 +1,6 @@
+.env
+data/
+work/
+__pycache__/
+*.pyc
+assets/logo.png

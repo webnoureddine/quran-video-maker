@@ -1,0 +1,19 @@
+{
+  "label": "Dark glass",
+  "label_ar": "زجاج داكن",
+  "description": "See-through dark card, words revealed one by one.",
+  "description_ar": "بطاقة داكنة شفافة، تظهر الكلمات تباعًا.",
+  "sort": 12,
+  "ar_font": "Noto Naskh Arabic",
+  "ar_color": "#FFFFFF",
+  "anim": "word_reveal",
+  "box": true,
+  "box_color": "#000000",
+  "box_opacity": 0.38,
+  "box_radius": 0.06,
+  "ar_size": 0.09,
+  "center_y": 0.5,
+  "outline": 0,
+  "shadow": 0,
+  "max_words_per_line": 6
+}

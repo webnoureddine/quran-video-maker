@@ -1,0 +1,23 @@
+{
+  "label": "Cinematic",
+  "label_ar": "سينمائي",
+  "description": "Dark gradient band, soft blur-in, italic translation.",
+  "description_ar": "شريط متدرّج داكن، ظهور ضبابي ناعم، وترجمة مائلة.",
+  "sort": 6,
+  "ar_font": "Amiri Quran",
+  "ar_color": "#FFFFFF",
+  "anim": "blur_in",
+  "band": true,
+  "band_opacity": 0.75,
+  "ar_size": 0.095,
+  "center_y": 0.74,
+  "outline": 0,
+  "shadow": 2,
+  "shadow_alpha": "70",
+  "show_translation": true,
+  "tr_font": "Playfair Display",
+  "tr_color": "#E9E4D8",
+  "tr_italic": true,
+  "tr_ratio": 0.4,
+  "fade_ms": 400
+}

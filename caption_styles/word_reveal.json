@@ -1,0 +1,16 @@
+{
+  "label": "Word by word",
+  "label_ar": "كلمة بكلمة",
+  "description": "Words appear one by one with the recitation.",
+  "description_ar": "تظهر الكلمات واحدة تلو الأخرى مع التلاوة.",
+  "sort": 3,
+  "ar_font": "Scheherazade New",
+  "ar_color": "#FFFFFF",
+  "anim": "word_reveal",
+  "ar_size": 0.105,
+  "center_y": 0.5,
+  "outline": 1,
+  "shadow": 4,
+  "shadow_alpha": "40",
+  "max_words_per_line": 5
+}

@@ -1,0 +1,18 @@
+{
+  "label": "Bold Kufi",
+  "label_ar": "كوفي عريض",
+  "description": "Heavy Kufi letters, words light up in blue — the TikTok look.",
+  "description_ar": "حروف كوفية عريضة تضيء بالأزرق — أسلوب تيك توك.",
+  "sort": 9,
+  "ar_font": "Reem Kufi",
+  "ar_color": "#FFFFFF",
+  "hl_color": "#4FC3F7",
+  "anim": "karaoke",
+  "upcoming_alpha": 0.4,
+  "ar_size": 0.1,
+  "center_y": 0.5,
+  "outline": 5,
+  "shadow": 0,
+  "max_words_per_line": 4,
+  "brackets": "none"
+}

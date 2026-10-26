@@ -1,0 +1,21 @@
+{
+  "label": "Rounded box",
+  "label_ar": "إطار مستدير",
+  "description": "White text on a soft rounded box, readable on any background.",
+  "description_ar": "نص أبيض على إطار مستدير شفاف، واضح على أي خلفية.",
+  "sort": 15,
+  "ar_font": "Amiri",
+  "ar_color": "#FFFFFF",
+  "tr_color": "#F1F1F1",
+  "ar_size": 0.1,
+  "show_translation": true,
+  "show_reference": true,
+  "center_y": 0.55,
+  "outline": 0,
+  "shadow": 0,
+  "box": true,
+  "box_color": "#000000",
+  "box_opacity": 0.5,
+  "box_radius": 0.035,
+  "anim": "fade"
+}

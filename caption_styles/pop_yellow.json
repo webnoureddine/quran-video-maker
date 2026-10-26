@@ -1,0 +1,18 @@
+{
+  "label": "Pop yellow",
+  "label_ar": "أصفر لافت",
+  "description": "Chunky display font, the recited word flashes yellow.",
+  "description_ar": "خط عريض لافت، والكلمة المتلوّة تومض بالأصفر.",
+  "sort": 10,
+  "ar_font": "Lalezar",
+  "ar_color": "#FFFFFF",
+  "hl_color": "#FFE14D",
+  "anim": "highlight",
+  "ar_size": 0.1,
+  "center_y": 0.55,
+  "outline": 5,
+  "outline_color": "#000000",
+  "shadow": 0,
+  "max_words_per_line": 4,
+  "brackets": "number"
+}

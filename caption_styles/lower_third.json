@@ -1,0 +1,21 @@
+{
+  "label": "Lower third",
+  "label_ar": "أسفل الشاشة",
+  "description": "Captions near the bottom, leaving the background visible.",
+  "description_ar": "نص قرب أسفل الشاشة مع إبقاء الخلفية ظاهرة.",
+  "sort": 16,
+  "ar_font": "Amiri",
+  "ar_color": "#FFFFFF",
+  "tr_color": "#E8E8E8",
+  "ar_size": 0.085,
+  "center_y": 0.8,
+  "show_translation": true,
+  "show_reference": true,
+  "outline": 2,
+  "shadow": 2,
+  "box": true,
+  "box_color": "#0B1A14",
+  "box_opacity": 0.6,
+  "box_radius": 0.025,
+  "anim": "fade"
+}

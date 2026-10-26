@@ -1,0 +1,19 @@
+{
+  "label": "Neon mint",
+  "label_ar": "نيون نعناعي",
+  "description": "Soft neon light that follows the recitation.",
+  "description_ar": "ضوء نيون ناعم يتبع التلاوة.",
+  "sort": 5,
+  "ar_font": "Noto Kufi Arabic",
+  "ar_color": "#F2FFF9",
+  "hl_color": "#6BFFD0",
+  "glow": true,
+  "glow_color": "#16E0A0",
+  "glow_size": 1.4,
+  "anim": "highlight",
+  "ar_size": 0.095,
+  "center_y": 0.5,
+  "outline": 0,
+  "shadow": 0,
+  "max_words_per_line": 5
+}

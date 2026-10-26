@@ -1,0 +1,20 @@
+{
+  "label": "Ornament lines",
+  "label_ar": "زخرفة",
+  "description": "Elegant lines with diamonds, gentle slide-up.",
+  "description_ar": "خطوط أنيقة بزخارف معيّنة مع انزلاق ناعم.",
+  "sort": 11,
+  "ar_font": "Amiri",
+  "ar_color": "#FFFFFF",
+  "ornament": true,
+  "ornament_color": "#D4AF37",
+  "anim": "slide_up",
+  "ar_size": 0.095,
+  "center_y": 0.5,
+  "outline": 1,
+  "shadow": 3,
+  "shadow_alpha": "50",
+  "brackets": "number",
+  "show_translation": true,
+  "tr_color": "#D9D9D9"
+}

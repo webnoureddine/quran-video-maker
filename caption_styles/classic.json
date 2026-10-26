@@ -1,0 +1,17 @@
+{
+  "label": "Classic gold",
+  "label_ar": "ذهبي كلاسيكي",
+  "description": "Gold Arabic text with an optional translation underneath.",
+  "description_ar": "نص عربي ذهبي مع ترجمة اختيارية أسفله.",
+  "sort": 1,
+  "ar_font": "Amiri Quran",
+  "ar_color": "#FFD700",
+  "tr_color": "#FFFFFF",
+  "ar_size": 0.1,
+  "show_translation": true,
+  "show_reference": true,
+  "center_y": 0.58,
+  "outline": 3,
+  "shadow": 2,
+  "anim": "fade"
+}

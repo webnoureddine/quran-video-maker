@@ -1,0 +1,16 @@
+{
+  "label": "Minimal white",
+  "label_ar": "أبيض بسيط",
+  "description": "Clean white Arabic text, centred on screen.",
+  "description_ar": "نص عربي أبيض واضح في وسط الشاشة.",
+  "sort": 14,
+  "ar_font": "Amiri",
+  "ar_color": "#FFFFFF",
+  "ar_size": 0.11,
+  "center_y": 0.5,
+  "show_translation": false,
+  "show_reference": true,
+  "outline": 2,
+  "shadow": 3,
+  "anim": "fade"
+}

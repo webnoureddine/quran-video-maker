@@ -1,0 +1,19 @@
+{
+  "label": "Karaoke gold",
+  "label_ar": "كاريوكي ذهبي",
+  "description": "Each word turns gold the moment it is recited.",
+  "description_ar": "كل كلمة تتلوّن بالذهبي لحظة تلاوتها.",
+  "sort": 2,
+  "ar_font": "Amiri Quran",
+  "ar_color": "#FFFFFF",
+  "hl_color": "#FFC93C",
+  "anim": "karaoke",
+  "upcoming_alpha": 0.5,
+  "ar_size": 0.11,
+  "center_y": 0.5,
+  "outline": 2,
+  "shadow": 3,
+  "shadow_alpha": "60",
+  "max_words_per_line": 5,
+  "show_reference": true
+}
